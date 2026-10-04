@@ -1,0 +1,12 @@
+/minivpn
+*.exe
+
+wintun.dll
+
+*.key
+
+*.log
+
+*.ps1
+*.bat
+*.cmd
