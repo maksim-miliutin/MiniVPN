@@ -18,7 +18,13 @@ frames, no forward secrecy and no key rotation; a handshake would bring them.
 ## Dependencies
 
 - golang.org/x/crypto: XChaCha20-Poly1305, the cipher that seals every frame.
-- golang.org/x/sys: used by x/crypto to detect what the processor can do.
+- golang.zx2c4.com/wintun: Go bindings for Wintun, the virtual network adapter.
+- golang.org/x/sys: the Windows calls around the adapter, and processor detection
+  for x/crypto.
+
+The adapter also needs wintun.dll from https://www.wintun.net (wintun/bin/amd64 in
+the zip) next to the executable, and administrator rights; neither is part of this
+repository.
 
 ## Building
 
