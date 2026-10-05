@@ -6,11 +6,15 @@ import (
 	"net"
 	"net/netip"
 	"sync/atomic"
+	"time"
 
 	"github.com/maksim-miliutin/MiniVPN/internal/packet"
 )
 
 const maxPacket = 65535
+
+// Many NATs forget an idle UDP mapping in under 30 seconds; wg(8) suggests 25.
+const KeepAliveEvery = 25 * time.Second
 
 type Device interface {
 	Read(buf []byte) (int, error)
@@ -62,6 +66,10 @@ func (t *Tunnel) Inbound() error {
 			return fmt.Errorf("tunnel: receiving: %w", err)
 		}
 
+		if len(p) == 0 {
+			continue
+		}
+
 		h, err := packet.ParseIPv4(p)
 		if err != nil || h.Src != t.peerIP {
 			t.refused.Add(1)
@@ -72,6 +80,16 @@ func (t *Tunnel) Inbound() error {
 			return fmt.Errorf("tunnel: writing the device: %w", err)
 		}
 	}
+}
+
+func (t *Tunnel) KeepAlive(ticks <-chan time.Time) error {
+	for range ticks {
+		if err := t.peer.Send(nil); errors.Is(err, net.ErrClosed) {
+			return fmt.Errorf("tunnel: keeping alive: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (t *Tunnel) Refused() uint64 {

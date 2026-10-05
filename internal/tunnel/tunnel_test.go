@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/netip"
 	"testing"
+	"time"
 )
 
 var (
@@ -150,5 +151,54 @@ func TestInboundRefusesWhatThePeerCannotHaveSent(t *testing.T) {
 
 	if n := tun.Refused(); n != 3 {
 		t.Errorf("refused %d, want 3", n)
+	}
+}
+
+func TestEachTickSendsOneEmptyFrame(t *testing.T) {
+	to := &peer{}
+	ticks := make(chan time.Time, 3)
+	for range 3 {
+		ticks <- time.Now()
+	}
+	close(ticks)
+
+	if err := New(&device{}, to, peerIP).KeepAlive(ticks); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(to.sent) != 3 {
+		t.Fatalf("sent %d keepalives, want 3", len(to.sent))
+	}
+
+	for _, p := range to.sent {
+		if len(p) != 0 {
+			t.Errorf("a keepalive carries %d bytes, want none", len(p))
+		}
+	}
+}
+
+func TestKeepAliveStopsWhenTheSocketCloses(t *testing.T) {
+	ticks := make(chan time.Time, 2)
+	ticks <- time.Now()
+	ticks <- time.Now()
+	close(ticks)
+
+	err := New(&device{}, &peer{refuse: []error{net.ErrClosed}}, peerIP).KeepAlive(ticks)
+	if !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("got %v, want net.ErrClosed", err)
+	}
+
+	if len(ticks) != 1 {
+		t.Error("the loop went on after the socket closed")
+	}
+}
+
+func TestAKeepAliveIsNotRefused(t *testing.T) {
+	dev := &device{}
+	tun := New(dev, &peer{inbox: [][]byte{{}, ipv4(peerIP, localIP, 100)}}, peerIP)
+	tun.Inbound()
+
+	if tun.Refused() != 0 || len(dev.written) != 1 {
+		t.Errorf("refused %d, wrote %d: a keepalive passed for a bad packet", tun.Refused(), len(dev.written))
 	}
 }
