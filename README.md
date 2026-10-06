@@ -8,6 +8,12 @@ This is a learning project, not a replacement for a real VPN; for anything that
 matters, use WireGuard. One server talks to one client, and only the tunnel's own
 subnet goes through it.
 
+## Download
+
+Every version tag publishes minivpn.exe for Windows and minivpn for Linux, both
+amd64, with their SHA256SUMS, on the Releases page. wintun.dll still comes from
+https://www.wintun.net.
+
 ## What it does not have
 
 Both ends share one pre-shared key, so there is no protection against replayed

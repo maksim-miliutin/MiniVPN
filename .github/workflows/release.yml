@@ -1,0 +1,37 @@
+name: release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+# Publishing a release writes to the repository; ci.yml stays read-only.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: test
+        run: go test ./...
+
+      - name: build
+        env:
+          CGO_ENABLED: "0"
+          GOARCH: amd64
+        run: |
+          GOOS=windows go build -trimpath -ldflags "-s -w" -o dist/minivpn.exe ./cmd/minivpn
+          GOOS=linux go build -trimpath -ldflags "-s -w" -o dist/minivpn ./cmd/minivpn
+          cd dist && sha256sum minivpn.exe minivpn > SHA256SUMS
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
