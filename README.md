@@ -8,8 +8,6 @@ This is a learning project, not a replacement for a real VPN; for anything that
 matters, use WireGuard. One server talks to one client, and only the tunnel's own
 subnet goes through it.
 
-It does not run yet.
-
 ## What it does not have
 
 Both ends share one pre-shared key, so there is no protection against replayed
@@ -31,3 +29,20 @@ repository.
 Windows on amd64 and the Go version named in go.mod.
 
     go build ./cmd/minivpn
+
+## Running
+
+Both ends run from an administrator window, with wintun.dll next to minivpn.exe.
+
+    minivpn genkey                       # writes minivpn.key; copy it to the other end
+    minivpn server                       # UDP port 51821, tunnel address 10.9.0.1/24
+    minivpn client -server HOST:51821    # tunnel address 10.9.0.2/24
+
+Flags -key, -addr and -peer change the defaults. Ctrl+C stops either end and prints
+how many frames did not open and how many packets were refused.
+
+Windows Firewall blocks the server's UDP port and inbound traffic inside the tunnel,
+ping included. To allow both for a test:
+
+    netsh advfirewall firewall add rule name=MiniVPN dir=in action=allow protocol=UDP localport=51821
+    netsh advfirewall firewall add rule name="MiniVPN ping" dir=in action=allow protocol=icmpv4:8,any remoteip=10.9.0.0/24
