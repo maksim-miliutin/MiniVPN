@@ -234,3 +234,19 @@ func TestSendAndReceiveCanRunAtOnce(t *testing.T) {
 	})
 	wg.Wait()
 }
+
+// Only go test -race can fail this too: the client's packets and keepalives leave
+// from two goroutines through one Send.
+func TestSendersTakeTurns(t *testing.T) {
+	_, client, _ := pair(newWire())
+
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Go(func() {
+			for range 100 {
+				client.Send([]byte("hello"))
+			}
+		})
+	}
+	wg.Wait()
+}

@@ -25,9 +25,10 @@ type Link struct {
 	box     *frame.Box
 	dropped atomic.Uint64
 
-	// Receive owns in and Send owns out: one goroutine each, never two on either.
-	in  []byte
-	out []byte
+	// Receive owns in alone; Send may come from several goroutines and takes out in turn.
+	in      []byte
+	sending sync.Mutex
+	out     []byte
 
 	mu   sync.Mutex
 	peer netip.AddrPort
@@ -48,6 +49,9 @@ func (l *Link) Send(packet []byte) error {
 	if !peer.IsValid() {
 		return ErrNoPeer
 	}
+
+	l.sending.Lock()
+	defer l.sending.Unlock()
 
 	l.out = l.box.Seal(l.out[:0], packet)
 	if err := l.conn.WriteTo(l.out, peer); err != nil {
