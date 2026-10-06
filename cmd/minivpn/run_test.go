@@ -217,9 +217,11 @@ func TestAPacketCrossesFromClientToServerAndBack(t *testing.T) {
 	clientEnded := start(ctx, client, depsFor(sky.open(clientAt), clientHost, key, &clientOut))
 
 	ping := ipv4("10.9.0.2", "10.9.0.1", 84)
-	clientHost.sends <- ping
-	if got := await(t, serverHost.gets, "the ping"); !bytes.Equal(got, ping) {
-		t.Fatal("the server got another packet than the client sent")
+	for range 2 {
+		clientHost.sends <- ping
+		if got := await(t, serverHost.gets, "the ping"); !bytes.Equal(got, ping) {
+			t.Fatal("the server got another packet than the client sent")
+		}
 	}
 
 	pong := ipv4("10.9.0.1", "10.9.0.2", 84)
@@ -232,8 +234,14 @@ func TestAPacketCrossesFromClientToServerAndBack(t *testing.T) {
 	stopped(t, "server", serverEnded)
 	stopped(t, "client", clientEnded)
 
-	if !strings.Contains(serverOut.String(), "0 frames did not open, 0 packets refused") {
-		t.Errorf("the server's summary: %q", serverOut.String())
+	want := map[string]string{
+		serverOut.String(): "packets out 1, in 2; frames that did not open 0, packets refused 0",
+		clientOut.String(): "packets out 2, in 1; frames that did not open 0, packets refused 0",
+	}
+	for out, line := range want {
+		if !strings.Contains(out, line) {
+			t.Errorf("summary %q, want %q", out, line)
+		}
 	}
 }
 
@@ -259,7 +267,7 @@ func TestAClientWithAnotherKeyGetsNowhere(t *testing.T) {
 	stopped(t, "server", serverEnded)
 	stopped(t, "client", clientEnded)
 
-	if !strings.Contains(serverOut.String(), "2 frames did not open") {
+	if !strings.Contains(serverOut.String(), "in 0; frames that did not open 2,") {
 		t.Errorf("want the first keepalive and the packet dropped; the server's summary: %q", serverOut.String())
 	}
 }

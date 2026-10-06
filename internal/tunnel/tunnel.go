@@ -30,6 +30,8 @@ type Tunnel struct {
 	dev     Device
 	peer    Peer
 	peerIP  netip.Addr
+	out     atomic.Uint64
+	in      atomic.Uint64
 	refused atomic.Uint64
 }
 
@@ -51,8 +53,13 @@ func (t *Tunnel) Outbound() error {
 		}
 
 		// Like a router, drop a packet that cannot go; only a closed socket ends the loop.
-		if err := t.peer.Send(buf[:n]); errors.Is(err, net.ErrClosed) {
+		err = t.peer.Send(buf[:n])
+		if errors.Is(err, net.ErrClosed) {
 			return fmt.Errorf("tunnel: sending: %w", err)
+		}
+
+		if err == nil {
+			t.out.Add(1)
 		}
 	}
 }
@@ -79,6 +86,8 @@ func (t *Tunnel) Inbound() error {
 		if err := t.dev.Write(p); err != nil {
 			return fmt.Errorf("tunnel: writing the device: %w", err)
 		}
+
+		t.in.Add(1)
 	}
 }
 
@@ -90,6 +99,14 @@ func (t *Tunnel) KeepAlive(ticks <-chan time.Time) error {
 	}
 
 	return nil
+}
+
+func (t *Tunnel) Out() uint64 {
+	return t.out.Load()
+}
+
+func (t *Tunnel) In() uint64 {
+	return t.in.Load()
 }
 
 func (t *Tunnel) Refused() uint64 {
