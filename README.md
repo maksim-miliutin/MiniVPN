@@ -31,9 +31,10 @@ Windows or Linux on amd64, and the Go version named in go.mod.
 
     go build ./cmd/minivpn
 
-A Linux build from Windows PowerShell, for example for WSL 2:
+A Linux build from Windows PowerShell, for example for WSL 2. Cgo stays off for it:
+MiniVPN has no C in it, and a Windows C compiler cannot build for Linux.
 
-    $env:GOOS = "linux"; go build ./cmd/minivpn; Remove-Item Env:GOOS
+    $env:GOOS = "linux"; $env:CGO_ENABLED = "0"; go build ./cmd/minivpn; Remove-Item Env:GOOS, Env:CGO_ENABLED
 
 ## Running
 
@@ -54,8 +55,20 @@ ping included. To allow both for a test:
     netsh advfirewall firewall add rule name=MiniVPN dir=in action=allow protocol=UDP localport=51821
     netsh advfirewall firewall add rule name="MiniVPN ping" dir=in action=allow protocol=icmpv4:8,any remoteip=10.9.0.0/24
 
+If Windows once asked about network access for minivpn.exe and the prompt was closed,
+it added rules that block the program, and a block beats the rules above:
+
+    Get-NetFirewallApplicationFilter -Program (Resolve-Path .\minivpn.exe).Path | Get-NetFirewallRule | Where-Object Action -eq Block | Remove-NetFirewallRule
+
 One PC is enough when the other end runs in WSL 2, which has a kernel and a network
 stack of its own; there the Windows side is the default gateway, as
-`ip route show default` prints it. Two ends inside one Windows do not work: both
-tunnel addresses would be local, and traffic between them would never enter the
-tunnel.
+`ip route show default` prints it. Before trusting a ping from WSL, check that
+`ip route get 10.9.0.1` names dev MiniVPN: without the client, WSL still reaches
+10.9.0.1 straight through its own network, and Windows answers. Two ends inside one
+Windows do not work at all: both tunnel addresses would be local, and traffic
+between them would never enter the tunnel.
+
+Checked so far: Windows with Linux in WSL 2 on one PC, and two Linux network
+namespaces, both with ping each way and 1400-byte packets passing with fragmentation
+forbidden while 1401 bytes are refused. Two separate Windows machines have not been
+tried yet.
