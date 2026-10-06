@@ -51,3 +51,10 @@ func (c Config) netsh() [][]string {
 		{"interface", "ipv4", "set", "subinterface", c.Name, "mtu=" + strconv.Itoa(c.MTU), "store=active"},
 	}
 }
+
+func (c Config) ip() [][]string {
+	return [][]string{
+		{"addr", "add", c.Prefix.String(), "dev", c.Name},
+		{"link", "set", "dev", c.Name, "mtu", strconv.Itoa(c.MTU), "up"},
+	}
+}
