@@ -23,6 +23,17 @@ func TestAConfigBecomesTwoNetshCommands(t *testing.T) {
 	}
 }
 
+func TestTheSameConfigBecomesTwoIPCommandsOnLinux(t *testing.T) {
+	want := [][]string{
+		{"addr", "add", "10.9.0.2/24", "dev", "MiniVPN"},
+		{"link", "set", "dev", "MiniVPN", "mtu", "1400", "up"},
+	}
+
+	if got := valid().ip(); !slices.EqualFunc(got, want, slices.Equal) {
+		t.Errorf("got %q", got)
+	}
+}
+
 func TestTheMaskFollowsThePrefix(t *testing.T) {
 	for prefix, mask := range map[string]string{"10.9.0.2/30": "255.255.255.252", "10.9.0.2/16": "255.255.0.0", "10.9.0.2/32": "255.255.255.255"} {
 		c := valid()
