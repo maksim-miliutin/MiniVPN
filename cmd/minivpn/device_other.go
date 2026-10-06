@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !linux
 
 package main
 
@@ -8,8 +8,8 @@ import (
 	"github.com/maksim-miliutin/MiniVPN/internal/adapter"
 )
 
-var ErrWindowsOnly = errors.New("minivpn: the adapter runs on Windows only")
+var ErrUnsupported = errors.New("minivpn: the adapter runs on Windows and Linux only")
 
 func openDevice(adapter.Config) (device, error) {
-	return nil, ErrWindowsOnly
+	return nil, ErrUnsupported
 }

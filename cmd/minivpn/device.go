@@ -1,3 +1,5 @@
+//go:build windows || linux
+
 package main
 
 import "github.com/maksim-miliutin/MiniVPN/internal/adapter"
