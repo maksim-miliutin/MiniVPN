@@ -45,7 +45,8 @@ wintun.dll next to minivpn.exe.
     minivpn client -server HOST:51821    # tunnel address 10.9.0.2/24
 
 Flags -key, -addr and -peer change the defaults. Ctrl+C stops either end and prints
-how many frames did not open and how many packets were refused.
+how many packets went out through the tunnel and came in, how many frames did not
+open and how many packets were refused.
 
 Windows Firewall blocks the server's UDP port and inbound traffic inside the tunnel,
 ping included. To allow both for a test:

@@ -96,6 +96,18 @@ func TestOutboundSendsIPv4AndLeavesTheRest(t *testing.T) {
 	}
 }
 
+func TestOnlyPacketsThatLeftAreCountedOut(t *testing.T) {
+	v6 := make([]byte, 40)
+	v6[0] = 0x60
+	dev := &device{reads: [][]byte{ipv4(localIP, peerIP, 60), v6, ipv4(localIP, peerIP, 80), ipv4(localIP, peerIP, 90)}}
+	tun := New(dev, &peer{refuse: []error{nil, errors.New("no peer address yet")}}, peerIP)
+	tun.Outbound()
+
+	if n := tun.Out(); n != 2 {
+		t.Errorf("counted %d out, want 2: one IPv6 never went, one send failed", n)
+	}
+}
+
 func TestOutboundOutlivesAPacketThatCouldNotGo(t *testing.T) {
 	a, b := ipv4(localIP, peerIP, 60), ipv4(localIP, peerIP, 80)
 	to := &peer{refuse: []error{errors.New("no peer address yet"), nil}}
@@ -129,8 +141,8 @@ func TestInboundWritesWhatThePeerSends(t *testing.T) {
 		t.Fatalf("got %v, want the peer to run dry", err)
 	}
 
-	if len(dev.written) != 1 || !bytes.Equal(dev.written[0], p) || tun.Refused() != 0 {
-		t.Errorf("wrote %d packets, refused %d", len(dev.written), tun.Refused())
+	if len(dev.written) != 1 || !bytes.Equal(dev.written[0], p) || tun.Refused() != 0 || tun.In() != 1 {
+		t.Errorf("wrote %d packets, counted %d in, refused %d", len(dev.written), tun.In(), tun.Refused())
 	}
 }
 
@@ -151,6 +163,10 @@ func TestInboundRefusesWhatThePeerCannotHaveSent(t *testing.T) {
 
 	if n := tun.Refused(); n != 3 {
 		t.Errorf("refused %d, want 3", n)
+	}
+
+	if n := tun.In(); n != 1 {
+		t.Errorf("counted %d in, want only the good one", n)
 	}
 }
 
@@ -198,7 +214,8 @@ func TestAKeepAliveIsNotRefused(t *testing.T) {
 	tun := New(dev, &peer{inbox: [][]byte{{}, ipv4(peerIP, localIP, 100)}}, peerIP)
 	tun.Inbound()
 
-	if tun.Refused() != 0 || len(dev.written) != 1 {
-		t.Errorf("refused %d, wrote %d: a keepalive passed for a bad packet", tun.Refused(), len(dev.written))
+	if tun.Refused() != 0 || len(dev.written) != 1 || tun.In() != 1 {
+		t.Errorf("refused %d, wrote %d, counted %d in: a keepalive is neither a bad packet nor traffic",
+			tun.Refused(), len(dev.written), tun.In())
 	}
 }

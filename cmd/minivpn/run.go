@@ -91,7 +91,8 @@ func run(ctx context.Context, c command, d deps) error {
 		<-ended
 	}
 
-	fmt.Fprintf(d.out, "minivpn: stopped; %d frames did not open, %d packets refused\n", l.Dropped(), t.Refused())
+	fmt.Fprintf(d.out, "minivpn: stopped; packets out %d, in %d; frames that did not open %d, packets refused %d\n",
+		t.Out(), t.In(), l.Dropped(), t.Refused())
 
 	return failed
 }
